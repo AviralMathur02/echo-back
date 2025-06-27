@@ -1,3 +1,5 @@
+// com.example.echobackend.service.RelationshipService.java
+
 package com.example.echobackend.service;
 
 import com.example.echobackend.model.Relationship;
@@ -5,14 +7,16 @@ import com.example.echobackend.model.User;
 import com.example.echobackend.repository.RelationshipRepository;
 import com.example.echobackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Set; // Import Set for collecting unique IDs
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.HashSet; // NEW: Import HashSet for set operations
+
+// Import for UserDTO to return a list of UserDTOs
+import com.example.echobackend.dto.UserDTO;
 
 @Service
 @RequiredArgsConstructor
@@ -75,48 +79,73 @@ public class RelationshipService {
         return relationshipRepository.existsByFollowerUserIdAndFollowedUserId(currentUserId, followedUserId);
     }
 
-    // --- MODIFIED SERVICE METHODS TO AVOID @Query IN REPOSITORY ---
-
     /**
      * Gets a list of User objects who are following a given user.
-     * Uses derived query methods in two steps: get relationship IDs, then fetch users.
      * @param userId The ID of the user whose followers are to be listed.
      * @return A list of User objects (followers).
      */
     public List<User> getFollowersList(Long userId) {
-        // Step 1: Get all relationships where the given userId is being followed
         List<Relationship> relationships = relationshipRepository.findByFollowedUserId(userId);
-
-        // Step 2: Extract the follower user IDs
         Set<Long> followerUserIds = relationships.stream()
                 .map(Relationship::getFollowerUserId)
-                .collect(Collectors.toSet()); // Use Set to avoid duplicate user IDs if any
-
-        // Step 3: Fetch the actual User objects using the collected IDs
-        // Note: If followerUserIds is empty, findAllById will return an empty list, which is desired.
+                .collect(Collectors.toSet());
         return userRepository.findAllById(followerUserIds);
     }
 
     /**
      * Gets a list of User objects that a given user is following.
-     * Uses derived query methods in two steps: get relationship IDs, then fetch users.
      * @param userId The ID of the user whose following list is to be retrieved.
      * @return A list of User objects (users being followed).
      */
     public List<User> getFollowingList(Long userId) {
-        // Step 1: Get all relationships where the given userId is the follower
         List<Relationship> relationships = relationshipRepository.findByFollowerUserId(userId);
-
-        // Step 2: Extract the followed user IDs
         Set<Long> followedUserIds = relationships.stream()
                 .map(Relationship::getFollowedUserId)
-                .collect(Collectors.toSet()); // Use Set to avoid duplicate user IDs
-
-        // Step 3: Fetch the actual User objects using the collected IDs
+                .collect(Collectors.toSet());
         return userRepository.findAllById(followedUserIds);
     }
 
-    // Existing count methods (no change)
+    // MODIFIED: Method to get a list of mutual friends without @Query
+    /**
+     * Gets a list of UserDTOs who are mutual followers (friends) with the given user.
+     * This method retrieves followers and following separately and finds their intersection.
+     * @param currentUserId The ID of the user for whom to find mutual friends.
+     * @return A list of UserDTOs representing mutual friends.
+     */
+    public List<UserDTO> getMutualFriendsList(Long currentUserId) {
+        if (currentUserId == null) {
+            throw new IllegalArgumentException("User ID cannot be null for finding mutual friends.");
+        }
+
+        // 1. Get IDs of users the current user is following
+        Set<Long> currentUserFollowingIds = relationshipRepository.findByFollowerUserId(currentUserId)
+                .stream()
+                .map(Relationship::getFollowedUserId)
+                .collect(Collectors.toSet());
+
+        // 2. Get IDs of users who are following the current user
+        Set<Long> currentUserFollowerIds = relationshipRepository.findByFollowedUserId(currentUserId)
+                .stream()
+                .map(Relationship::getFollowerUserId)
+                .collect(Collectors.toSet());
+
+        // 3. Find the intersection of these two sets (mutual friends)
+        Set<Long> mutualFriendIds = new HashSet<>(currentUserFollowingIds); // Start with one set
+        mutualFriendIds.retainAll(currentUserFollowerIds); // Retain only elements also in the other set
+
+        // 4. Fetch the User entities for the mutual friend IDs
+        List<User> mutualFriends = userRepository.findAllById(mutualFriendIds);
+
+        // 5. Convert User entities to UserDTOs
+        return mutualFriends.stream()
+                            .map(user -> {
+                                // Re-use existing service methods for counts if needed in DTO
+                                long followerCount = getFollowerCount(user.getId());
+                                long followingCount = getFollowingCount(user.getId());
+                                return new UserDTO(user, followerCount, followingCount);
+                            })
+                            .collect(Collectors.toList());
+    }
     public long getFollowerCount(Long userId) {
         return relationshipRepository.countByFollowedUserId(userId);
     }

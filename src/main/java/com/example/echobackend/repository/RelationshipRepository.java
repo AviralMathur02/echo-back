@@ -1,15 +1,15 @@
+// com.example.echobackend.repository.RelationshipRepository.java
+
 package com.example.echobackend.repository;
 
 import com.example.echobackend.model.Relationship;
 import com.example.echobackend.model.Relationship.RelationshipId;
-import com.example.echobackend.model.User; // Keep if User is used for other methods in this repo, or remove if not
 import org.springframework.data.jpa.repository.JpaRepository;
-// import org.springframework.data.jpa.repository.Query; // Removed @Query import
-// import org.springframework.data.repository.query.Param; // Removed @Param import
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+ // Added for clarity in derived methods (though not strictly needed by JPA method names)
 
 @Repository
 public interface RelationshipRepository extends JpaRepository<Relationship, RelationshipId> {
@@ -28,4 +28,8 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Rela
 
     long countByFollowerUserId(Long followerUserId);
 
+    // REMOVED: The @Query method for findMutualFollowersByUserId
+
+    // You could potentially add derived methods here if needed for direct fetching
+    // Example (not strictly needed for mutual friends, as service will handle intersection):
 }

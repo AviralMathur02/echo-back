@@ -1,16 +1,17 @@
-// server/src/main/java/com/example/echobackend/controller/RelationshipController.java
+// com.example.echobackend.controller.RelationshipController.java
+
 package com.example.echobackend.controller;
 
 import com.example.echobackend.model.User;
 import com.example.echobackend.service.RelationshipService;
-import com.example.echobackend.repository.UserRepository; // <<-- NEW IMPORT
+import com.example.echobackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import com.example.echobackend.dto.UserDTO;
+import com.example.echobackend.dto.UserDTO; // Ensure UserDTO is imported
 import com.example.echobackend.dto.RelationshipRequest;
 
 import java.util.List;
@@ -81,7 +82,6 @@ public class RelationshipController {
         }
     }
 
-    // --- MODIFIED HELPER METHOD ---
     private Long getCurrentAuthenticatedUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getName())) {
@@ -89,7 +89,7 @@ public class RelationshipController {
             return null;
         }
 
-        String username = authentication.getName(); // This will give the username
+        String username = authentication.getName();
         System.out.println("getCurrentAuthenticatedUserId: Authenticated username: " + username);
         return userRepository.findByUsername(username)
                 .map(User::getId)
@@ -98,6 +98,7 @@ public class RelationshipController {
                     return null;
                 });
     }
+
     @GetMapping("/followers/count")
     public ResponseEntity<Long> getFollowerCount(@RequestParam Long userId) {
         try {
@@ -139,6 +140,36 @@ public class RelationshipController {
         } catch (Exception e) {
             System.err.println("Error getting following list: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    // NEW: Endpoint for mutual friends list
+    @GetMapping("/friends/list")
+    public ResponseEntity<List<UserDTO>> getMutualFriendsList(@RequestParam Long userId) {
+        try {
+            // Get the currently authenticated user's ID
+            Long currentUserId = getCurrentAuthenticatedUserId();
+            if (currentUserId == null) {
+                // If the user isn't authenticated, they can't have a mutual friends list
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(List.of());
+            }
+
+            // Important: If you want mutual friends for a *specific* user (not necessarily current user),
+            // you'd pass `userId` to the service. For "mutual friends with *me*", pass `currentUserId`.
+            // Assuming "friends" here means mutual friends *of the current authenticated user*.
+            // If the frontend sends a `userId` param, and you want mutual friends of *that* user,
+            // then ensure `getCurrentAuthenticatedUserId()` also allows viewing other users' friends
+            // or pass `userId` parameter as currentUserId to the service.
+            // For now, let's assume it's mutual friends of the requested `userId` from the frontend param.
+            List<UserDTO> mutualFriends = relationshipService.getMutualFriendsList(userId);
+            return ResponseEntity.ok(mutualFriends);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error getting mutual friends list: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(List.of());
+        } catch (Exception e) {
+            System.err.println("Unexpected error getting mutual friends list: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(List.of());
         }
     }
 }
