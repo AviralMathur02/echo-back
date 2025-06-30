@@ -1,5 +1,3 @@
-// com.example.echobackend.controller.RelationshipController.java
-
 package com.example.echobackend.controller;
 
 import com.example.echobackend.model.User;
@@ -11,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import com.example.echobackend.dto.UserDTO; // Ensure UserDTO is imported
+import com.example.echobackend.dto.UserDTO;
 import com.example.echobackend.dto.RelationshipRequest;
 
 import java.util.List;
@@ -34,10 +32,8 @@ public class RelationshipController {
             boolean isFollowing = relationshipService.isFollowing(currentUserId, followedUserId);
             return ResponseEntity.ok(isFollowing);
         } catch (RuntimeException e) {
-            System.err.println("Error checking relationship: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(false);
         } catch (Exception e) {
-            System.err.println("Unexpected error checking relationship: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
         }
     }
@@ -51,14 +47,9 @@ public class RelationshipController {
             }
             String message = relationshipService.addRelationship(followerUserId, request.getUserId());
             return ResponseEntity.status(HttpStatus.OK).body(message);
-        }
-        catch (RuntimeException e) {
-            System.err.println("Error adding relationship: " + e.getMessage());
+        } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
-        catch (Exception e) {
-            System.err.println("Unexpected error adding relationship: " + e.getMessage());
-            e.printStackTrace();
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error adding relationship.");
         }
     }
@@ -73,11 +64,8 @@ public class RelationshipController {
             String message = relationshipService.deleteRelationship(followerUserId, request.getUserId());
             return ResponseEntity.status(HttpStatus.OK).body(message);
         } catch (RuntimeException e) {
-            System.err.println("Error deleting relationship: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (Exception e) {
-            System.err.println("Unexpected error deleting relationship: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error deleting relationship.");
         }
     }
@@ -85,18 +73,13 @@ public class RelationshipController {
     private Long getCurrentAuthenticatedUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getName())) {
-            System.out.println("getCurrentAuthenticatedUserId: No authenticated user or is anonymousUser.");
             return null;
         }
 
         String username = authentication.getName();
-        System.out.println("getCurrentAuthenticatedUserId: Authenticated username: " + username);
         return userRepository.findByUsername(username)
                 .map(User::getId)
-                .orElseGet(() -> {
-                    System.err.println("getCurrentAuthenticatedUserId: User not found in repository for username: " + username);
-                    return null;
-                });
+                .orElse(null);
     }
 
     @GetMapping("/followers/count")
@@ -105,7 +88,6 @@ public class RelationshipController {
             long count = relationshipService.getFollowerCount(userId);
             return ResponseEntity.ok(count);
         } catch (Exception e) {
-            System.err.println("Error getting follower count: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(0L);
         }
     }
@@ -116,7 +98,6 @@ public class RelationshipController {
             long count = relationshipService.getFollowingCount(userId);
             return ResponseEntity.ok(count);
         } catch (Exception e) {
-            System.err.println("Error getting following count: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(0L);
         }
     }
@@ -127,8 +108,7 @@ public class RelationshipController {
             List<User> followers = relationshipService.getFollowersList(userId);
             return ResponseEntity.ok(followers);
         } catch (Exception e) {
-            System.err.println("Error getting followers list: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(List.of());
         }
     }
 
@@ -138,37 +118,22 @@ public class RelationshipController {
             List<User> following = relationshipService.getFollowingList(userId);
             return ResponseEntity.ok(following);
         } catch (Exception e) {
-            System.err.println("Error getting following list: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(List.of());
         }
     }
 
-    // NEW: Endpoint for mutual friends list
     @GetMapping("/friends/list")
     public ResponseEntity<List<UserDTO>> getMutualFriendsList(@RequestParam Long userId) {
         try {
-            // Get the currently authenticated user's ID
             Long currentUserId = getCurrentAuthenticatedUserId();
             if (currentUserId == null) {
-                // If the user isn't authenticated, they can't have a mutual friends list
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(List.of());
             }
-
-            // Important: If you want mutual friends for a *specific* user (not necessarily current user),
-            // you'd pass `userId` to the service. For "mutual friends with *me*", pass `currentUserId`.
-            // Assuming "friends" here means mutual friends *of the current authenticated user*.
-            // If the frontend sends a `userId` param, and you want mutual friends of *that* user,
-            // then ensure `getCurrentAuthenticatedUserId()` also allows viewing other users' friends
-            // or pass `userId` parameter as currentUserId to the service.
-            // For now, let's assume it's mutual friends of the requested `userId` from the frontend param.
             List<UserDTO> mutualFriends = relationshipService.getMutualFriendsList(userId);
             return ResponseEntity.ok(mutualFriends);
         } catch (IllegalArgumentException e) {
-            System.err.println("Error getting mutual friends list: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(List.of());
         } catch (Exception e) {
-            System.err.println("Unexpected error getting mutual friends list: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(List.of());
         }
     }

@@ -11,7 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime; // Keep this import
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -24,7 +24,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final UserRepository userRepository;
-    private final RelationshipService relationshipService; // Assuming this service exists and is correctly implemented
+    private final RelationshipService relationshipService;
 
     public List<PostResponse> getPosts(Long targetUserId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -38,35 +38,28 @@ public class PostService {
 
         List<Post> posts;
         if (targetUserId != null) {
-            // Find posts by target User ID using the updated repository method
             posts = postRepository.findByUser_IdOrderByCreatedAtDesc(targetUserId);
         } else {
             List<Long> followedUserIds = relationshipService.getFollowedUserIds(currentUser.getId());
-
-            // Include current user's ID in the list to also fetch their own posts
             followedUserIds.add(currentUser.getId());
-
-            // Find posts by a list of User IDs using the updated repository method
             posts = postRepository.findByUser_IdInOrderByCreatedAtDesc(followedUserIds);
         }
 
-        // Fetch all users involved in these posts to avoid N+1 queries
         Set<Long> userIdsInPosts = posts.stream()
-                                    .map(post -> post.getUser().getId()) // Access ID via the User object
-                                    .collect(Collectors.toSet());
+                                         .map(post -> post.getUser().getId())
+                                         .collect(Collectors.toSet());
         Map<Long, User> usersMap = userRepository.findAllById(userIdsInPosts)
                 .stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
 
-        // Map Post entities to PostResponse DTOs, including user details
         return posts.stream().map(post -> {
-            User postUser = usersMap.get(post.getUser().getId()); // Access ID via the User object
+            User postUser = usersMap.get(post.getUser().getId());
             return new PostResponse(
                 post.getId(),
                 post.getDescription(),
                 post.getImg(),
-                post.getCreatedAt(), // createdAt is now LocalDateTime, matches PostResponse
-                post.getUser().getId(), // Access ID via the User object
+                post.getCreatedAt(),
+                post.getUser().getId(),
                 postUser != null ? postUser.getName() : null,
                 postUser != null ? postUser.getProfilePic() : null
             );
@@ -86,9 +79,7 @@ public class PostService {
         Post newPost = new Post();
         newPost.setDescription(request.getDescription());
         newPost.setImg(request.getImg());
-        // No need to set createdAt manually; @CreationTimestamp handles it automatically.
-
-        newPost.setUser(currentUser); // Correctly set the User object (critical for foreign key)
+        newPost.setUser(currentUser);
 
         postRepository.save(newPost);
         return "Post has been created.";
@@ -107,8 +98,7 @@ public class PostService {
         Post postToDelete = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found!"));
 
-        // Compare user IDs using the User object from the Post
-        if (!postToDelete.getUser().getId().equals(currentUser.getId())) { // Access ID via the User object
+        if (!postToDelete.getUser().getId().equals(currentUser.getId())) {
             throw new RuntimeException("You can delete only your post!");
         }
 

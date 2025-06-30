@@ -1,7 +1,7 @@
-// server/src/main/java/com/example/echobackend/controller/UserController.java
 package com.example.echobackend.controller;
-import com.example.echobackend.dto.UserDTO; // Import UserDTO
-import com.example.echobackend.model.User; // Keep if you use it for other methods
+
+import com.example.echobackend.dto.UserDTO;
+import com.example.echobackend.model.User;
 import com.example.echobackend.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,20 +17,18 @@ public class UserController {
 
     private final UserService userService;
 
-
     @GetMapping("/find/{userId}")
     public ResponseEntity<UserDTO> getUser(@PathVariable Long userId) {
         try {
             UserDTO userDto = userService.getUserById(userId);
             return ResponseEntity.ok(userDto);
         } catch (RuntimeException e) {
-            System.err.println("Error fetching user: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
         } catch (Exception e) {
-            System.err.println("Unexpected error fetching user: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
+
     @PutMapping
     public ResponseEntity<String> updateUser(@RequestBody User user) {
         try {
@@ -39,8 +37,7 @@ public class UserController {
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (Exception e) {
-            System.err.println("Error updating user: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error updating user: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error updating user.");
         }
     }
 
@@ -52,32 +49,29 @@ public class UserController {
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
         } catch (Exception e) {
-            System.err.println("Error deleting user: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error deleting user: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error deleting user.");
         }
     }
+
     @GetMapping("/suggestions")
     public ResponseEntity<List<User>> getSuggestions() {
         try {
             List<User> suggestions = userService.getSuggestions();
             return ResponseEntity.ok(suggestions);
         } catch (RuntimeException e) {
-            System.err.println("Error getting suggestions: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(List.of());
         } catch (Exception e) {
-            System.err.println("Unexpected error getting suggestions: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(List.of());
         }
     }
+
     @GetMapping("/search")
     public ResponseEntity<List<User>> searchUsers(@RequestParam String query) {
         try {
             List<User> users = userService.searchUsers(query);
             return ResponseEntity.ok(users);
         } catch (Exception e) {
-            System.err.println("Error searching users: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(List.of());
         }
     }
 
@@ -86,6 +80,7 @@ public class UserController {
         boolean isTaken = userService.isUsernameTaken(username);
         return ResponseEntity.ok(isTaken);
     }
+
     @GetMapping("/check-email")
     public ResponseEntity<Boolean> checkEmail(@RequestParam String email) {
         boolean isTaken = userService.isEmailTaken(email);

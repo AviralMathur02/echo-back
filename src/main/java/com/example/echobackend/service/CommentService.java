@@ -30,13 +30,11 @@ public class CommentService {
     public List<CommentResponse> getComments(Long postId) {
         List<Comment> comments = commentRepository.findByPostIdOrderByCreatedAtDesc(postId);
 
-        // Fetch all users involved in these comments to avoid N+1 queries
         Set<Long> userIds = comments.stream().map(Comment::getUserId).collect(Collectors.toSet());
         Map<Long, User> usersMap = userRepository.findAllById(userIds)
                 .stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
 
-        // Map Comment entities to CommentResponse DTOs, including user details
         return comments.stream().map(comment -> {
             User commentUser = usersMap.get(comment.getUserId());
             return new CommentResponse(
@@ -72,7 +70,7 @@ public class CommentService {
         return "Comment has been created.";
     }
 
-    @Transactional // Required for deleteByIdAndUserId
+    @Transactional
     public String deleteComment(Long commentId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -84,7 +82,6 @@ public class CommentService {
                 .orElseThrow(() -> new RuntimeException("Authenticated user not found."));
         Long currentUserId = currentUser.getId();
 
-        // Check if the comment exists and belongs to the user
         boolean exists = commentRepository.findById(commentId)
                 .map(comment -> comment.getUserId().equals(currentUserId))
                 .orElse(false);

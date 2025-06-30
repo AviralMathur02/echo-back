@@ -27,7 +27,7 @@ public class StoryService {
 
     private final StoryRepository storyRepository;
     private final UserRepository userRepository;
-    private final RelationshipService relationshipService; // Inject RelationshipService
+    private final RelationshipService relationshipService;
 
     public List<StoryResponse> getStories() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -40,26 +40,18 @@ public class StoryService {
                 .orElseThrow(() -> new RuntimeException("Authenticated user not found."));
         Long currentUserId = currentUser.getId();
 
-        // Get followed user IDs
         List<Long> followedUserIds = relationshipService.getFollowedUserIds(currentUserId);
-        
-        // Also include the current user's ID to fetch their own stories
         List<Long> userIdsToFetch = new ArrayList<>(followedUserIds);
         userIdsToFetch.add(currentUserId);
 
-        // Fetch stories from current user and followed users, limit to 4
-        // Note: JPA find methods don't directly support LIMIT. We fetch all and then limit in Java.
         List<Story> stories = storyRepository.findByUserIdInOrderByCreatedAtDesc(userIdsToFetch);
-        // Apply limit 4 as per Node.js logic
         List<Story> limitedStories = stories.stream().limit(4).collect(Collectors.toList());
 
-        // Fetch user details for the stories
         Set<Long> storyUserIds = limitedStories.stream().map(Story::getUserId).collect(Collectors.toSet());
         Map<Long, User> usersMap = userRepository.findAllById(storyUserIds)
                 .stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
 
-        // Map Story entities to StoryResponse DTOs, including user name
         return limitedStories.stream().map(story -> {
             User storyUser = usersMap.get(story.getUserId());
             return new StoryResponse(
@@ -104,7 +96,6 @@ public class StoryService {
                 .orElseThrow(() -> new RuntimeException("Authenticated user not found."));
         Long currentUserId = currentUser.getId();
 
-        // Find the story and verify ownership
         boolean existsAndOwned = storyRepository.findById(storyId)
                 .map(story -> story.getUserId().equals(currentUserId))
                 .orElse(false);

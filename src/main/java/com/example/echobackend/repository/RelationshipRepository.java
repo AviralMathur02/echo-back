@@ -27,9 +27,4 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Rela
     long countByFollowedUserId(Long followedUserId);
 
     long countByFollowerUserId(Long followerUserId);
-
-    // REMOVED: The @Query method for findMutualFollowersByUserId
-
-    // You could potentially add derived methods here if needed for direct fetching
-    // Example (not strictly needed for mutual friends, as service will handle intersection):
 }
